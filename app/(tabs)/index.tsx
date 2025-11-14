@@ -1,98 +1,184 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import {
+  Dimensions,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+const Calculator = () => {
+  const [expression, setExpression] = useState('');
+  const [result, setResult] = useState('0');
+  const [history, setHistory] = useState<string[]>([]);
 
-export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  // Handle number/operator button press
+  const handleButtonPress = (value: React.SetStateAction<string>) => {
+    if (result !== '0' && expression === '' && !isNaN(Number(value))) {
+      setExpression(value);
+      return;
+    }
+    setExpression(prev => prev + value);
+  };
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  // Handle advanced operations
+  const handleAdvancedOperation = (op: string) => {
+    let value = parseFloat(expression || result);
+    let calcExpression = '';
+    let res = 0;
+
+    try {
+      switch (op) {
+        case '√':
+          res = Math.sqrt(value);
+          calcExpression = `√(${value})`;
+          break;
+        case 'x²':
+          res = Math.pow(value, 2);
+          calcExpression = `(${value})²`;
+          break;
+        case 'sin':
+          res = Math.sin(value * Math.PI / 180);
+          calcExpression = `sin(${value})`;
+          break;
+        case 'cos':
+          res = Math.cos(value * Math.PI / 180);
+          calcExpression = `cos(${value})`;
+          break;
+        case 'π':
+          res = Math.PI;
+          calcExpression = 'π';
+          break;
+        default:
+          return;
+      }
+      setResult(res.toString());
+      setHistory(prev => [`${calcExpression} = ${res}`, ...prev.slice(0, 4)]);
+      setExpression('');
+    } catch {
+      setResult('Error');
+      setTimeout(() => setResult('0'), 1500);
+    }
+  };
+
+  // Basic calculation
+  const calculateResult = () => {
+    try {
+      const sanitized = expression.replace(/[^-()\d/*+.%]/g, '');
+      if (!sanitized) return;
+      const res = eval(sanitized);
+      if (!isFinite(res)) {
+        setResult('Error');
+        setTimeout(() => setResult('0'), 1500);
+        return;
+      }
+      setResult(res.toString());
+      setHistory(prev => [`${expression} = ${res}`, ...prev.slice(0, 4)]);
+      setExpression('');
+    } catch {
+      setResult('Error');
+      setTimeout(() => setResult('0'), 1500);
+    }
+  };
+
+  const clearAll = () => {
+    setExpression('');
+    setResult('0');
+  };
+
+  const clearEntry = () => {
+    if (expression.length > 0) setExpression(expression.slice(0, -1));
+    else setResult('0');
+  };
+
+  const clearHistory = () => setHistory([]);
+
+  const CalculatorButton = ({ title, onPress, style, textStyle }: { title: string; onPress: () => void; style?: any; textStyle?: any }) => (
+    <TouchableOpacity style={[styles.button, style]} onPress={onPress}>
+      <Text style={[styles.buttonText, textStyle]}>{title}</Text>
+    </TouchableOpacity>
   );
-}
+
+  const advancedButtons = ['√', 'x²', 'sin', 'cos', 'π']; // Removed 'e'
+  const basicButtons = [
+    ['C', 'CE', '%', '÷'],
+    ['7', '8', '9', '*'],
+    ['4', '5', '6', '-'],
+    ['1', '2', '3', '+'],
+    ['0', '.', '=']
+  ];
+
+  return (
+    <View style={styles.container}>
+      {/* Display */}
+      <View style={styles.displayContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <Text style={styles.expressionText}>{expression || ' '}</Text>
+        </ScrollView>
+        <Text style={styles.resultText} numberOfLines={1}>{result}</Text>
+      </View>
+
+      {/* Advanced Buttons */}
+      <View style={styles.advancedContainer}>
+        {advancedButtons.map((btn) => (
+          <CalculatorButton
+            key={btn}
+            title={btn}
+            onPress={() => handleAdvancedOperation(btn)}
+            style={styles.advancedButton} textStyle={undefined}          />
+        ))}
+      </View>
+
+      {/* Basic Buttons */}
+      {basicButtons.map((row, i) => (
+        <View key={i} style={styles.buttonRow}>
+          {row.map((btn) => {
+            if (btn === 'C') return <CalculatorButton key={btn} title={btn} onPress={clearAll} style={styles.clearButton} textStyle={undefined} />;
+            if (btn === 'CE') return <CalculatorButton key={btn} title={btn} onPress={clearEntry} style={styles.clearButton} textStyle={undefined} />;
+            if (btn === '=') return <CalculatorButton key={btn} title={btn} onPress={calculateResult} style={styles.equalsButton} textStyle={undefined} />;
+            if (['÷','*','-','+','%'].includes(btn)) return <CalculatorButton key={btn} title={btn} onPress={() => handleButtonPress(btn === '÷' ? '/' : btn === '×' ? '*' : btn)} style={styles.operatorButton} textStyle={undefined} />;
+            return <CalculatorButton key={btn} title={btn} onPress={() => handleButtonPress(btn)} style={styles.numberButton} textStyle={undefined} />;
+          })}
+        </View>
+      ))}
+
+      {/* History Section */}
+      <View style={styles.historyContainer}>
+        <View style={styles.historyHeader}>
+          <Text style={styles.historyTitle}>History</Text>
+          <TouchableOpacity onPress={clearHistory}><Text style={styles.clearHistoryText}>Clear</Text></TouchableOpacity>
+        </View>
+        <ScrollView style={styles.historyList}>
+          {history.map((item, i) => <Text key={i} style={styles.historyItem}>{item}</Text>)}
+        </ScrollView>
+      </View>
+    </View>
+  );
+};
+
+const { width } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
+  container: { flex: 1, backgroundColor: '#f5f5f5', padding: 10 },
+  displayContainer: { backgroundColor: '#333', padding: 20, justifyContent: 'center', alignItems: 'flex-end', minHeight: 120, borderRadius: 12, marginBottom: 10 },
+  expressionText: { color: '#aaa', fontSize: 18, textAlign: 'right' },
+  resultText: { color: '#fff', fontSize: 40, fontWeight: 'bold', textAlign: 'right', marginTop: 5 },
+  advancedContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 10 },
+  buttonRow: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 5 },
+  button: { flex: 1, margin: 3, paddingVertical: 18, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  buttonText: { fontSize: 20, fontWeight: '600' },
+  numberButton: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd' },
+  operatorButton: { backgroundColor: '#FF9500' },
+  clearButton: { backgroundColor: '#FF3B30' },
+  equalsButton: { backgroundColor: '#34C759' },
+  advancedButton: { backgroundColor: '#9C27B0', margin: 4, flex: 1, minWidth: '18%' },
+  historyContainer: { flex: 1, backgroundColor: '#f9f9f9', borderTopWidth: 1, borderTopColor: '#ddd', marginTop: 10 },
+  historyHeader: { flexDirection: 'row', justifyContent: 'space-between', padding: 10, backgroundColor: '#eee', borderTopLeftRadius: 12, borderTopRightRadius: 12 },
+  historyTitle: { fontWeight: 'bold' },
+  clearHistoryText: { color: '#FF3B30', fontWeight: 'bold' },
+  historyList: { padding: 10 },
+  historyItem: { fontSize: 14, color: '#555', marginBottom: 5 }
 });
+
+export default Calculator;
